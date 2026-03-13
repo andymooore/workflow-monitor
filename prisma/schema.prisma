@@ -1,0 +1,303 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// ──────────────────────────────────────────────
+// ENUMS
+// ──────────────────────────────────────────────
+
+enum UserStatus {
+  ACTIVE
+  INACTIVE
+}
+
+enum NodeType {
+  START
+  END
+  TASK
+  APPROVAL
+  CONDITION
+}
+
+enum NodeStatus {
+  PENDING
+  WAITING
+  IN_PROGRESS
+  APPROVED
+  REJECTED
+  COMPLETED
+  SKIPPED
+}
+
+enum InstanceStatus {
+  DRAFT
+  RUNNING
+  COMPLETED
+  CANCELLED
+  FAILED
+}
+
+enum ApprovalDecision {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+enum ApprovalStrategy {
+  ALL_MUST_APPROVE
+  ANY_CAN_APPROVE
+  SEQUENTIAL
+}
+
+enum AuditAction {
+  WORKFLOW_CREATED
+  WORKFLOW_STARTED
+  WORKFLOW_COMPLETED
+  WORKFLOW_CANCELLED
+  TASK_ASSIGNED
+  TASK_STARTED
+  TASK_COMPLETED
+  APPROVAL_REQUESTED
+  APPROVAL_GRANTED
+  APPROVAL_REJECTED
+  NODE_ACTIVATED
+  NODE_COMPLETED
+  NODE_SKIPPED
+  COMMENT_ADDED
+}
+
+enum ConditionBranch {
+  APPROVED_PATH
+  REJECTED_PATH
+}
+
+// ──────────────────────────────────────────────
+// USER & ROLE MODELS
+// ──────────────────────────────────────────────
+
+model User {
+  id           String     @id @default(cuid())
+  email        String     @unique
+  name         String
+  passwordHash String?
+  status       UserStatus @default(ACTIVE)
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
+
+  roles             UserRole[]
+  createdTemplates  WorkflowTemplate[] @relation("TemplateCreator")
+  ownedInstances    WorkflowInstance[] @relation("InstanceOwner")
+  taskAssignments   TaskInstance[]     @relation("TaskAssignee")
+  approvalDecisions Approval[]         @relation("ApprovalDecider")
+  auditLogs         AuditLog[]
+  comments          Comment[]
+
+  @@index([email])
+}
+
+model Role {
+  id          String   @id @default(cuid())
+  name        String   @unique
+  description String?
+  createdAt   DateTime @default(now())
+
+  users           UserRole[]
+  nodeAssignments WorkflowNodeRoleAssignment[]
+}
+
+model UserRole {
+  id     String @id @default(cuid())
+  userId String
+  roleId String
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  role Role @relation(fields: [roleId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, roleId])
+  @@index([userId])
+  @@index([roleId])
+}
+
+// ──────────────────────────────────────────────
+// WORKFLOW TEMPLATE MODELS (design-time)
+// ──────────────────────────────────────────────
+
+model WorkflowTemplate {
+  id          String  @id @default(cuid())
+  name        String
+  description String?
+  version     Int     @default(1)
+  isPublished Boolean @default(false)
+  createdById String
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  createdBy User               @relation("TemplateCreator", fields: [createdById], references: [id])
+  nodes     WorkflowNode[]
+  edges     WorkflowEdge[]
+  instances WorkflowInstance[]
+
+  @@index([createdById])
+  @@index([isPublished])
+}
+
+model WorkflowNode {
+  id        String   @id @default(cuid())
+  templateId String
+  type      NodeType
+  label     String
+  positionX Float
+  positionY Float
+  config    Json     @default("{}")
+
+  createdAt DateTime @default(now())
+
+  template        WorkflowTemplate             @relation(fields: [templateId], references: [id], onDelete: Cascade)
+  roleAssignments WorkflowNodeRoleAssignment[]
+  outgoingEdges   WorkflowEdge[]               @relation("EdgeSource")
+  incomingEdges   WorkflowEdge[]               @relation("EdgeTarget")
+  taskInstances   TaskInstance[]
+
+  @@index([templateId])
+  @@index([type])
+}
+
+model WorkflowNodeRoleAssignment {
+  id            String  @id @default(cuid())
+  nodeId        String
+  roleId        String
+  assignToOwner Boolean @default(false)
+
+  node WorkflowNode @relation(fields: [nodeId], references: [id], onDelete: Cascade)
+  role Role         @relation(fields: [roleId], references: [id], onDelete: Cascade)
+
+  @@unique([nodeId, roleId])
+  @@index([nodeId])
+}
+
+model WorkflowEdge {
+  id              String           @id @default(cuid())
+  templateId      String
+  sourceId        String
+  targetId        String
+  label           String?
+  conditionBranch ConditionBranch?
+
+  template WorkflowTemplate @relation(fields: [templateId], references: [id], onDelete: Cascade)
+  source   WorkflowNode     @relation("EdgeSource", fields: [sourceId], references: [id], onDelete: Cascade)
+  target   WorkflowNode     @relation("EdgeTarget", fields: [targetId], references: [id], onDelete: Cascade)
+
+  @@index([templateId])
+  @@index([sourceId])
+  @@index([targetId])
+}
+
+// ──────────────────────────────────────────────
+// WORKFLOW INSTANCE MODELS (run-time)
+// ──────────────────────────────────────────────
+
+model WorkflowInstance {
+  id          String         @id @default(cuid())
+  templateId  String
+  ownerId     String
+  title       String
+  status      InstanceStatus @default(DRAFT)
+  metadata    Json           @default("{}")
+  startedAt   DateTime?
+  completedAt DateTime?
+  createdAt   DateTime       @default(now())
+  updatedAt   DateTime       @updatedAt
+
+  template      WorkflowTemplate @relation(fields: [templateId], references: [id])
+  owner         User             @relation("InstanceOwner", fields: [ownerId], references: [id])
+  taskInstances TaskInstance[]
+  auditLogs     AuditLog[]
+  comments      Comment[]
+
+  @@index([templateId])
+  @@index([ownerId])
+  @@index([status])
+  @@index([createdAt])
+}
+
+model TaskInstance {
+  id          String     @id @default(cuid())
+  instanceId  String
+  nodeId      String
+  status      NodeStatus @default(PENDING)
+  assigneeId  String?
+  activatedAt DateTime?
+  completedAt DateTime?
+  notes       String?
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+
+  instance  WorkflowInstance @relation(fields: [instanceId], references: [id], onDelete: Cascade)
+  node      WorkflowNode     @relation(fields: [nodeId], references: [id])
+  assignee  User?            @relation("TaskAssignee", fields: [assigneeId], references: [id])
+  approvals Approval[]
+
+  @@index([instanceId])
+  @@index([nodeId])
+  @@index([assigneeId])
+  @@index([status])
+}
+
+model Approval {
+  id             String           @id @default(cuid())
+  taskInstanceId String
+  deciderId      String?
+  decision       ApprovalDecision @default(PENDING)
+  comment        String?
+  decidedAt      DateTime?
+  sequenceOrder  Int              @default(0)
+  createdAt      DateTime         @default(now())
+
+  taskInstance TaskInstance @relation(fields: [taskInstanceId], references: [id], onDelete: Cascade)
+  decider      User?       @relation("ApprovalDecider", fields: [deciderId], references: [id])
+
+  @@index([taskInstanceId])
+  @@index([deciderId])
+  @@index([decision])
+}
+
+// ──────────────────────────────────────────────
+// AUDIT & COLLABORATION
+// ──────────────────────────────────────────────
+
+model AuditLog {
+  id         String      @id @default(cuid())
+  instanceId String
+  userId     String
+  action     AuditAction
+  details    Json        @default("{}")
+  createdAt  DateTime    @default(now())
+
+  instance WorkflowInstance @relation(fields: [instanceId], references: [id], onDelete: Cascade)
+  user     User             @relation(fields: [userId], references: [id])
+
+  @@index([instanceId])
+  @@index([userId])
+  @@index([action])
+  @@index([createdAt])
+}
+
+model Comment {
+  id         String   @id @default(cuid())
+  instanceId String
+  userId     String
+  content    String
+  createdAt  DateTime @default(now())
+
+  instance WorkflowInstance @relation(fields: [instanceId], references: [id], onDelete: Cascade)
+  user     User             @relation(fields: [userId], references: [id])
+
+  @@index([instanceId])
+  @@index([createdAt])
+}

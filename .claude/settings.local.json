@@ -1,0 +1,21 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(dir /s 2>&1 | head -50)",
+      "WebFetch(domain:www.npmjs.com)",
+      "WebFetch(domain:www.prisma.io)",
+      "WebFetch(domain:authjs.dev)",
+      "WebFetch(domain:reactflow.dev)",
+      "WebFetch(domain:docs.pmnd.rs)",
+      "WebFetch(domain:zustand.docs.pmnd.rs)",
+      "Bash(cd \"C:/Users/morgan_an/Downloads/wo-r\" && npx create-next-app@latest . --typescript --tailwind --eslint --app --src-dir --import-alias \"@/*\" --use-npm --no-turbopack 2>&1)",
+      "Bash(cd \"C:/Users/morgan_an/Downloads\" && npx create-next-app@latest wo-r-temp --typescript --tailwind --eslint --app --src-dir --import-alias \"@/*\" --use-npm --no-turbopack 2>&1)",
+      "Bash(cd \"C:/Users/morgan_an/Downloads\" && echo \"N\" | npx create-next-app@latest wo-r-temp --typescript --tailwind --eslint --app --src-dir --import-alias \"@/*\" --use-npm --no-turbopack 2>&1)",
+      "Bash(cp -r \"C:/Users/morgan_an/Downloads/wo-r-temp/\"* \"C:/Users/morgan_an/Downloads/wo-r/\" && cp -r \"C:/Users/morgan_an/Downloads/wo-r-temp/\".* \"C:/Users/morgan_an/Downloads/wo-r/\" 2>/dev/null; rm -rf \"C:/Users/morgan_an/Downloads/wo-r-temp\" && ls \"C:/Users/morgan_an/Downloads/wo-r/\")",
+      "Bash(cd \"C:/Users/morgan_an/Downloads/wo-r\" && npm install @xyflow/react zustand next-auth@beta zod date-fns @tanstack/react-table bcryptjs lucide-react prisma @prisma/client 2>&1)",
+      "Bash(cd \"C:/Users/morgan_an/Downloads/wo-r\" && npm install -D @types/bcryptjs 2>&1)",
+      "Bash(cd \"C:/Users/morgan_an/Downloads/wo-r\" && npx prisma init --datasource-provider postgresql 2>&1)",
+      "Bash(cd \"C:/Users/morgan_an/Downloads/wo-r\" && npx shadcn@latest init -d --force 2>&1)"
+    ]
+  }
+}
