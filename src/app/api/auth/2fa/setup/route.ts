@@ -1,8 +1,8 @@
 import { NextResponse, type NextRequest } from "next/server";
 import crypto from "crypto";
 import { z } from "zod";
-import * as OTPLib from "otplib";
-const authenticator = OTPLib.authenticator;
+// eslint-disable-next-line @typescript-eslint/no-require-imports
+const { authenticator } = require("otplib");
 import QRCode from "qrcode";
 import { prisma } from "@/lib/db";
 import { logger } from "@/lib/logger";
