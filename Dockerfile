@@ -17,7 +17,8 @@ COPY . .
 # Generate Prisma Client
 RUN npx prisma generate
 
-# Build Next.js (standalone output)
+# Build Next.js (standalone output) - limit memory to avoid OOM on small servers
+ENV NODE_OPTIONS="--max-old-space-size=1024"
 RUN npm run build
 
 # ── Stage 3: Production runtime ─────────────────────────────────────────────
