@@ -236,26 +236,26 @@ function GraphNodeComponent({ data, selected }: { data: Record<string, unknown>;
           <p className="truncate text-xs font-semibold text-foreground">
             {label}
           </p>
-          {metadata.status && (
+          {metadata.status ? (
             <p className="truncate text-[10px] text-muted-foreground">
               {String(metadata.status)}
             </p>
-          )}
-          {metadata.email && (
+          ) : null}
+          {metadata.email ? (
             <p className="truncate text-[10px] text-muted-foreground">
               {String(metadata.email)}
             </p>
-          )}
-          {metadata.shortCode && (
+          ) : null}
+          {metadata.shortCode ? (
             <p className="truncate text-[10px] text-muted-foreground">
               {String(metadata.shortCode)}
             </p>
-          )}
-          {metadata.slug && (
+          ) : null}
+          {metadata.slug ? (
             <p className="truncate text-[10px] text-muted-foreground">
               /{String(metadata.slug)}
             </p>
-          )}
+          ) : null}
         </div>
       </div>
     </div>
