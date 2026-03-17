@@ -1,7 +1,8 @@
 import { NextResponse, type NextRequest } from "next/server";
 import crypto from "crypto";
 import { z } from "zod";
-import { authenticator } from "otplib";
+import * as OTPLib from "otplib";
+const authenticator = OTPLib.authenticator;
 import { prisma } from "@/lib/db";
 import { logger } from "@/lib/logger";
 import { rateLimit, rateLimitResponse, getClientIp } from "@/lib/rate-limit";
