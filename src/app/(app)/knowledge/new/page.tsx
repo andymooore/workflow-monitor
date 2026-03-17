@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { Suspense, useCallback, useEffect, useState } from "react";
 import { useSession } from "next-auth/react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
@@ -167,7 +167,7 @@ function generateSlug(title: string): string {
 // ---------------------------------------------------------------------------
 // Component
 // ---------------------------------------------------------------------------
-export default function ArticleEditorPage() {
+function ArticleEditorPageContent() {
   const { data: session } = useSession();
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -681,5 +681,13 @@ export default function ArticleEditorPage() {
         </div>
       </div>
     </div>
+  );
+}
+
+export default function ArticleEditorPage() {
+  return (
+    <Suspense fallback={<div className="flex h-screen items-center justify-center"><div className="animate-spin h-8 w-8 border-4 border-primary border-t-transparent rounded-full" /></div>}>
+      <ArticleEditorPageContent />
+    </Suspense>
   );
 }
