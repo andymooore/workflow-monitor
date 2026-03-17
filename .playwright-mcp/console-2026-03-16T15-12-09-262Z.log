@@ -1,0 +1,13 @@
+[   30002ms] [ERROR] Failed to load resource: the server responded with a status of 500 (Internal Server Error) @ http://localhost:3002/dashboard?_rsc=970e3:0
+[   30074ms] [ERROR] Failed to load resource: the server responded with a status of 500 (Internal Server Error) @ http://localhost:3002/dashboard:0
+[   30343ms] MissingSecret: Must pass `secret` if not set to JWT getToken(). Read more at https://errors.authjs.dev#missingsecret
+    at getToken (file://C:\Users\morgan_an\Downloads\wo-r\.next\dev\server\edge\chunks\node_modules_39f14ebf._.js:16222:24)
+    at middleware (file://C:\Users\morgan_an\Downloads\wo-r\.next\dev\server\edge\chunks\[root-of-the-server]__8978dbac._.js:93:187)
+    at <unknown> (file://C:\Users\morgan_an\Downloads\wo-r\.next\dev\server\edge\chunks\node_modules_39f14ebf._.js:16407:26)
+    at AsyncLocalStorage.run (node:internal/async_local_storage/async_context_frame:63:14)
+    at <unknown> (file://C:\Users\morgan_an\Downloads\wo-r\.next\dev\server\edge\chunks\node_modules_39f14ebf._.js:7316:655)
+    at AsyncLocalStorage.run (node:internal/async_local_storage/async_context_frame:63:14)
+    at <unknown> (file://C:\Users\morgan_an\Downloads\wo-r\.next\dev\server\edge\chunks\node_modules_39f14ebf._.js:7316:325)
+    at async adapter (file://C:\Users\morgan_an\Downloads\wo-r\.next\dev\server\edge\chunks\node_modules_39f14ebf._.js:7271:16)
+    at async (file://C:\Users\morgan_an\Downloads\wo-r\node_modules\next\dist\server\web\sandbox\sandbox.js:112:26)
+    at async runWithTaggedErrors (file://C:\Users\morgan_an\Downloads\wo-r\node_modules\next\dist\server\web\sandbox\sandbox.js:109:9)

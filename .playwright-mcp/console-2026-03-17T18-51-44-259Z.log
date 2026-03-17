@@ -1,0 +1,4 @@
+[   10466ms] [ERROR] Failed to load resource: the server responded with a status of 404 () @ https://resend.com/docs?_rsc=1r34m:0
+[   11584ms] [ERROR] Failed to load resource: the server responded with a status of 400 () @ https://api.reo.dev/api/v1/ghost/event:0
+[   11721ms] [ERROR] Failed to load resource: the server responded with a status of 400 () @ https://api.reo.dev/api/v1/ghost/event:0
+[   11828ms] [ERROR] Failed to load resource: the server responded with a status of 400 () @ https://api.reo.dev/api/v1/ghost/event:0

@@ -1,0 +1,17 @@
+[  329234ms] [WARNING] Detected `scroll-behavior: smooth` on the `<html>` element. To disable smooth scrolling during route transitions, add `data-scroll-behavior="smooth"` to your <html> element. Learn more: https://nextjs.org/docs/messages/missing-data-scroll-behavior @ http://localhost:3000/_next/static/chunks/node_modules_next_dist_f3530cac._.js:2297
+[  961241ms] [ERROR] Failed to load resource: the server responded with a status of 404 (Not Found) @ http://localhost:3000/instances/cmmuw611i0000rgr78k9lqeb7?_rsc=yesy2:0
+[  987221ms] [ERROR] Failed to load resource: the server responded with a status of 404 (Not Found) @ http://localhost:3000/instances/cmmuw611i0000rgr78k9lqeb7?_rsc=yesy2:0
+[  992510ms] [ERROR] Failed to load resource: the server responded with a status of 404 (Not Found) @ http://localhost:3000/instances/cmmuw611i0000rgr78k9lqeb7?_rsc=yesy2:0
+[ 1007636ms] [ERROR] Failed to load resource: the server responded with a status of 404 (Not Found) @ http://localhost:3000/instances/cmmuw611i0000rgr78k9lqeb7?_rsc=yesy2:0
+[ 1089132ms] [ERROR] Failed to load resource: the server responded with a status of 404 (Not Found) @ http://localhost:3000/instances/cmmuw611i0000rgr78k9lqeb7?_rsc=yesy2:0
+[ 1217292ms] [ERROR] Failed to load resource: the server responded with a status of 404 (Not Found) @ http://localhost:3000/instances/cmmuw611i0000rgr78k9lqeb7?_rsc=yesy2:0
+[ 3587378ms] [ERROR] Failed to load resource: the server responded with a status of 404 (Not Found) @ http://localhost:3000/favicon-16x16.png:0
+[ 3587515ms] [ERROR] Failed to load resource: the server responded with a status of 404 (Not Found) @ http://localhost:3000/favicon-16x16.png:0
+[ 3748225ms] [ERROR] Failed to load resource: the server responded with a status of 404 (Not Found) @ http://localhost:3000/favicon-16x16.png:0
+[ 3748277ms] [ERROR] Failed to load resource: the server responded with a status of 404 (Not Found) @ http://localhost:3000/favicon-16x16.png:0
+[ 3792646ms] [ERROR] Failed to load resource: the server responded with a status of 404 (Not Found) @ http://localhost:3000/favicon-16x16.png:0
+[ 3792696ms] [ERROR] Failed to load resource: the server responded with a status of 404 (Not Found) @ http://localhost:3000/favicon-16x16.png:0
+[ 3841469ms] [ERROR] Failed to load resource: the server responded with a status of 404 (Not Found) @ http://localhost:3000/favicon-16x16.png:0
+[ 3841524ms] [ERROR] Failed to load resource: the server responded with a status of 404 (Not Found) @ http://localhost:3000/favicon-16x16.png:0
+[ 4211546ms] [ERROR] Failed to load resource: the server responded with a status of 404 (Not Found) @ http://localhost:3000/instances/cmmuw611i0000rgr78k9lqeb7?_rsc=yesy2:0
+[ 4264977ms] [ERROR] Failed to load resource: the server responded with a status of 404 (Not Found) @ http://localhost:3000/instances/cmmuw611i0000rgr78k9lqeb7?_rsc=yesy2:0

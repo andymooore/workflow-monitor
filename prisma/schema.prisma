@@ -16,12 +16,96 @@ enum UserStatus {
   INACTIVE
 }
 
+enum ClientStatus {
+  ACTIVE
+  INACTIVE
+  ARCHIVED
+}
+
+enum MinistryStatus {
+  ACTIVE
+  INACTIVE
+  ARCHIVED
+}
+
+enum ContactRole {
+  PRIMARY
+  TECHNICAL
+  ESCALATION
+  BILLING
+  DATA_PROTECTION_OFFICER
+}
+
+enum SlaTier {
+  GOLD
+  SILVER
+  BRONZE
+}
+
+enum JamaicanParish {
+  KINGSTON
+  ST_ANDREW
+  ST_THOMAS
+  PORTLAND
+  ST_MARY
+  ST_ANN
+  TRELAWNY
+  ST_JAMES
+  HANOVER
+  WESTMORELAND
+  ST_ELIZABETH
+  MANCHESTER
+  CLARENDON
+  ST_CATHERINE
+}
+
 enum NodeType {
   START
   END
   TASK
   APPROVAL
   CONDITION
+}
+
+enum ProjectStatus {
+  PLANNING
+  IN_PROGRESS
+  ON_HOLD
+  COMPLETED
+  CANCELLED
+}
+
+enum ProjectHealth {
+  ON_TRACK
+  AT_RISK
+  BLOCKED
+}
+
+enum MilestoneStatus {
+  PENDING
+  IN_PROGRESS
+  COMPLETED
+  MISSED
+}
+
+enum ActivityType {
+  CLIENT_CREATED
+  CLIENT_UPDATED
+  PROJECT_CREATED
+  PROJECT_UPDATED
+  PROJECT_STATUS_CHANGED
+  MILESTONE_CREATED
+  MILESTONE_COMPLETED
+  MILESTONE_MISSED
+  TEAM_MEMBER_ADDED
+  TEAM_MEMBER_REMOVED
+  DOCUMENT_UPLOADED
+  WORKFLOW_STARTED
+  WORKFLOW_COMPLETED
+  COMMENT_ADDED
+  NOTE_ADDED
+  KNOWLEDGE_ARTICLE_CREATED
+  KNOWLEDGE_ARTICLE_UPDATED
 }
 
 enum NodeStatus {
@@ -69,6 +153,49 @@ enum AuditAction {
   NODE_COMPLETED
   NODE_SKIPPED
   COMMENT_ADDED
+  USER_CREATED
+  USER_UPDATED
+  USER_DEACTIVATED
+  ROLE_CREATED
+  ROLE_UPDATED
+  ROLE_DELETED
+  ROLE_ASSIGNED
+  ROLE_REMOVED
+  CATEGORY_CREATED
+  CATEGORY_UPDATED
+  CATEGORY_DELETED
+  TEMPLATE_CREATED
+  TEMPLATE_UPDATED
+  TEMPLATE_DELETED
+  TEMPLATE_PUBLISHED
+  CLIENT_CREATED
+  CLIENT_UPDATED
+  CLIENT_DELETED
+  PROJECT_CREATED
+  PROJECT_UPDATED
+  PROJECT_DELETED
+  MINISTRY_CREATED
+  MINISTRY_UPDATED
+  MINISTRY_DELETED
+  CONTACT_CREATED
+  CONTACT_UPDATED
+  CONTACT_DELETED
+  DOCUMENT_UPLOADED
+  DOCUMENT_DELETED
+  DELEGATION_CREATED
+  DELEGATION_REVOKED
+  SLA_BREACHED
+  TASK_ESCALATED
+  WEBHOOK_FIRED
+  SYSTEM_SETTINGS_UPDATED
+  MILESTONE_CREATED
+  MILESTONE_UPDATED
+  MILESTONE_COMPLETED
+  TEAM_MEMBER_ADDED
+  TEAM_MEMBER_REMOVED
+  KNOWLEDGE_ARTICLE_CREATED
+  KNOWLEDGE_ARTICLE_UPDATED
+  KNOWLEDGE_ARTICLE_DELETED
 }
 
 enum ConditionBranch {
@@ -76,26 +203,226 @@ enum ConditionBranch {
   REJECTED_PATH
 }
 
+enum TwoFactorMethod {
+  EMAIL
+  TOTP
+}
+
+// ──────────────────────────────────────────────
+// MINISTRY, CLIENT, PROJECT & CONTACT MODELS
+// ──────────────────────────────────────────────
+
+model Ministry {
+  id           String         @id @default(cuid())
+  name         String         @unique
+  shortCode    String         @unique
+  description  String?
+  status       MinistryStatus @default(ACTIVE)
+  website      String?
+  headOfEntity String?
+  createdAt    DateTime       @default(now())
+  updatedAt    DateTime       @updatedAt
+
+  clients Client[]
+
+  @@index([status])
+  @@index([name])
+}
+
+model Client {
+  id                 String          @id @default(cuid())
+  name               String          @unique
+  shortCode          String          @unique
+  description        String?
+  status             ClientStatus    @default(ACTIVE)
+  website            String?
+  ministryId         String?
+  referenceNumber    String?         @unique
+  slaTier            SlaTier         @default(BRONZE)
+  addressStreet      String?
+  addressCity        String?
+  addressParish      JamaicanParish?
+  hasSignedAgreement Boolean         @default(false)
+  agreementDate      DateTime?
+  agreementReference String?
+  createdAt          DateTime        @default(now())
+  updatedAt          DateTime        @updatedAt
+
+  ministry   Ministry?          @relation(fields: [ministryId], references: [id], onDelete: SetNull)
+  contacts   ClientContact[]
+  projects   Project[]
+  instances  WorkflowInstance[]
+  documents  Document[]
+  users      User[]             @relation("UserDefaultClient")
+  activities ActivityEvent[]
+
+  @@index([status])
+  @@index([name])
+  @@index([ministryId])
+  @@index([slaTier])
+}
+
+model ClientContact {
+  id         String      @id @default(cuid())
+  clientId   String
+  name       String
+  email      String
+  phone      String?
+  title      String?
+  department String?
+  role       ContactRole @default(PRIMARY)
+  isPrimary  Boolean     @default(false)
+  isActive   Boolean     @default(true)
+  notes      String?
+  createdAt  DateTime    @default(now())
+  updatedAt  DateTime    @updatedAt
+
+  client             Client             @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  projects           ProjectContact[]
+  requestedInstances WorkflowInstance[]
+
+  @@index([clientId])
+  @@index([clientId, isPrimary])
+  @@index([clientId, role])
+  @@index([email])
+}
+
+model Project {
+  id          String        @id @default(cuid())
+  clientId    String
+  name        String
+  description String?
+  isActive    Boolean       @default(true)
+  status      ProjectStatus @default(PLANNING)
+  health      ProjectHealth @default(ON_TRACK)
+  startDate   DateTime?
+  endDate     DateTime?
+
+  // Budget & financials
+  budgetAmount  Float?  // Total allocated budget
+  budgetSpent   Float?  // Amount spent so far
+  budgetCurrency String @default("JMD")
+
+  // SLA & TOR documents
+  slaReference  String? // SLA document reference/number
+  slaSignedDate DateTime?
+  slaSummary    String? // Brief SLA terms summary
+  torReference  String? // TOR document reference/number
+  torSignedDate DateTime?
+  torSummary    String? // Brief TOR scope summary
+
+  // Environment URLs
+  stagingUrl String?
+  liveUrl    String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  client     Client             @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  contacts   ProjectContact[]
+  instances  WorkflowInstance[]
+  documents  Document[]
+  milestones Milestone[]
+  members    ProjectMember[]
+  activities ActivityEvent[]
+
+  @@unique([clientId, name])
+  @@index([clientId])
+  @@index([isActive])
+  @@index([status])
+  @@index([health])
+}
+
+model ProjectContact {
+  id        String @id @default(cuid())
+  projectId String
+  contactId String
+
+  project Project       @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  contact ClientContact @relation(fields: [contactId], references: [id], onDelete: Cascade)
+
+  @@unique([projectId, contactId])
+  @@index([projectId])
+  @@index([contactId])
+}
+
+// ──────────────────────────────────────────────
+// DOCUMENTS (Supporting files for clients/projects)
+// ──────────────────────────────────────────────
+
+enum DocumentType {
+  SLA
+  TOR
+  CLIENT_ACCESS_AGREEMENT
+  CONTRACT
+  PROPOSAL
+  CHANGE_REQUEST
+  REPORT
+  MEETING_MINUTES
+  OTHER
+}
+
+model Document {
+  id           String       @id @default(cuid())
+  clientId     String?
+  projectId    String?
+  instanceId   String?
+  title        String
+  type         DocumentType @default(OTHER)
+  description  String?
+  fileName     String?
+  fileUrl      String?
+  reference    String?
+  uploadedById String
+  createdAt    DateTime     @default(now())
+  updatedAt    DateTime     @updatedAt
+
+  client     Client?           @relation(fields: [clientId], references: [id], onDelete: SetNull)
+  project    Project?          @relation(fields: [projectId], references: [id], onDelete: SetNull)
+  instance   WorkflowInstance? @relation(fields: [instanceId], references: [id], onDelete: SetNull)
+  uploadedBy User              @relation("DocumentUploader", fields: [uploadedById], references: [id])
+
+  @@index([clientId])
+  @@index([projectId])
+  @@index([instanceId])
+  @@index([type])
+  @@index([uploadedById])
+}
+
 // ──────────────────────────────────────────────
 // USER & ROLE MODELS
 // ──────────────────────────────────────────────
 
 model User {
-  id           String     @id @default(cuid())
-  email        String     @unique
-  name         String
-  passwordHash String?
-  status       UserStatus @default(ACTIVE)
-  createdAt    DateTime   @default(now())
-  updatedAt    DateTime   @updatedAt
+  id              String     @id @default(cuid())
+  email           String     @unique
+  name            String
+  passwordHash    String?
+  defaultClientId String?
+  status          UserStatus @default(ACTIVE)
+  createdAt       DateTime   @default(now())
+  updatedAt       DateTime   @updatedAt
 
-  roles             UserRole[]
-  createdTemplates  WorkflowTemplate[] @relation("TemplateCreator")
-  ownedInstances    WorkflowInstance[] @relation("InstanceOwner")
-  taskAssignments   TaskInstance[]     @relation("TaskAssignee")
-  approvalDecisions Approval[]         @relation("ApprovalDecider")
-  auditLogs         AuditLog[]
-  comments          Comment[]
+  defaultClient       Client?            @relation("UserDefaultClient", fields: [defaultClientId], references: [id], onDelete: SetNull)
+  roles               UserRole[]
+  createdTemplates    WorkflowTemplate[] @relation("TemplateCreator")
+  ownedInstances      WorkflowInstance[] @relation("InstanceOwner")
+  taskAssignments     TaskInstance[]     @relation("TaskAssignee")
+  approvalDecisions   Approval[]         @relation("ApprovalDecider")
+  auditLogs           AuditLog[]
+  comments            Comment[]
+  notifications       Notification[]
+  uploadedDocuments   Document[]         @relation("DocumentUploader")
+  delegationsGiven    Delegation[]       @relation("DelegationsGiven")
+  delegationsReceived Delegation[]       @relation("DelegationsReceived")
+  webhooks            Webhook[]
+  projectMemberships  ProjectMember[]
+  activityEvents      ActivityEvent[]
+  knowledgeArticles   KnowledgeArticle[] @relation("ArticleAuthor")
+  passwordResetTokens         PasswordResetToken[]
+  twoFactorConfig             TwoFactorConfig?
+  twoFactorChallenges         TwoFactorChallenge[]
+  notificationPreferences     NotificationPreference[]
 
   @@index([email])
 }
@@ -124,6 +451,22 @@ model UserRole {
 }
 
 // ──────────────────────────────────────────────
+// WORKFLOW CATEGORIES
+// ──────────────────────────────────────────────
+
+model WorkflowCategory {
+  id          String   @id @default(cuid())
+  name        String   @unique
+  description String?
+  icon        String   @default("FolderOpen")
+  color       String   @default("slate")
+  sortOrder   Int      @default(0)
+  createdAt   DateTime @default(now())
+
+  @@index([sortOrder])
+}
+
+// ──────────────────────────────────────────────
 // WORKFLOW TEMPLATE MODELS (design-time)
 // ──────────────────────────────────────────────
 
@@ -131,6 +474,8 @@ model WorkflowTemplate {
   id          String  @id @default(cuid())
   name        String
   description String?
+  category    String  @default("General")
+  intakeForm  Json    @default("[]")
   version     Int     @default(1)
   isPublished Boolean @default(false)
   createdById String
@@ -148,13 +493,13 @@ model WorkflowTemplate {
 }
 
 model WorkflowNode {
-  id        String   @id @default(cuid())
+  id         String   @id @default(cuid())
   templateId String
-  type      NodeType
-  label     String
-  positionX Float
-  positionY Float
-  config    Json     @default("{}")
+  type       NodeType
+  label      String
+  positionX  Float
+  positionY  Float
+  config     Json     @default("{}")
 
   createdAt DateTime @default(now())
 
@@ -203,25 +548,37 @@ model WorkflowEdge {
 // ──────────────────────────────────────────────
 
 model WorkflowInstance {
-  id          String         @id @default(cuid())
-  templateId  String
-  ownerId     String
-  title       String
-  status      InstanceStatus @default(DRAFT)
-  metadata    Json           @default("{}")
-  startedAt   DateTime?
-  completedAt DateTime?
-  createdAt   DateTime       @default(now())
-  updatedAt   DateTime       @updatedAt
+  id                   String         @id @default(cuid())
+  templateId           String
+  ownerId              String
+  clientId             String?
+  projectId            String?
+  requestedByContactId String?
+  title                String
+  status               InstanceStatus @default(DRAFT)
+  metadata             Json           @default("{}")
+  startedAt            DateTime?
+  completedAt          DateTime?
+  createdAt            DateTime       @default(now())
+  updatedAt            DateTime       @updatedAt
 
-  template      WorkflowTemplate @relation(fields: [templateId], references: [id])
-  owner         User             @relation("InstanceOwner", fields: [ownerId], references: [id])
-  taskInstances TaskInstance[]
-  auditLogs     AuditLog[]
-  comments      Comment[]
+  template           WorkflowTemplate @relation(fields: [templateId], references: [id])
+  owner              User             @relation("InstanceOwner", fields: [ownerId], references: [id])
+  client             Client?          @relation(fields: [clientId], references: [id])
+  project            Project?         @relation(fields: [projectId], references: [id])
+  requestedByContact ClientContact?   @relation(fields: [requestedByContactId], references: [id], onDelete: SetNull)
+  taskInstances      TaskInstance[]
+  auditLogs          AuditLog[]
+  comments           Comment[]
+  notifications      Notification[]
+  documents          Document[]
+  activities         ActivityEvent[]
 
   @@index([templateId])
   @@index([ownerId])
+  @@index([clientId])
+  @@index([projectId])
+  @@index([clientId, status])
   @@index([status])
   @@index([createdAt])
 }
@@ -234,6 +591,7 @@ model TaskInstance {
   assigneeId  String?
   activatedAt DateTime?
   completedAt DateTime?
+  dueDate     DateTime?
   notes       String?
   createdAt   DateTime   @default(now())
   updatedAt   DateTime   @updatedAt
@@ -247,6 +605,8 @@ model TaskInstance {
   @@index([nodeId])
   @@index([assigneeId])
   @@index([status])
+  @@index([assigneeId, status])
+  @@index([dueDate])
 }
 
 model Approval {
@@ -260,11 +620,47 @@ model Approval {
   createdAt      DateTime         @default(now())
 
   taskInstance TaskInstance @relation(fields: [taskInstanceId], references: [id], onDelete: Cascade)
-  decider      User?       @relation("ApprovalDecider", fields: [deciderId], references: [id])
+  decider      User?        @relation("ApprovalDecider", fields: [deciderId], references: [id])
 
   @@index([taskInstanceId])
   @@index([deciderId])
   @@index([decision])
+  @@index([deciderId, decision])
+}
+
+// ──────────────────────────────────────────────
+// NOTIFICATIONS
+// ──────────────────────────────────────────────
+
+enum NotificationType {
+  TASK_ASSIGNED
+  APPROVAL_REQUESTED
+  APPROVAL_DECISION
+  TASK_COMPLETED
+  WORKFLOW_COMPLETED
+  WORKFLOW_CANCELLED
+  COMMENT_ADDED
+  SLA_BREACH
+  TASK_ESCALATED
+}
+
+model Notification {
+  id         String           @id @default(cuid())
+  userId     String
+  type       NotificationType
+  title      String
+  message    String
+  link       String?
+  isRead     Boolean          @default(false)
+  instanceId String?
+  createdAt  DateTime         @default(now())
+
+  user     User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  instance WorkflowInstance? @relation(fields: [instanceId], references: [id], onDelete: Cascade)
+
+  @@index([userId, isRead])
+  @@index([userId, createdAt])
+  @@index([instanceId])
 }
 
 // ──────────────────────────────────────────────
@@ -273,14 +669,15 @@ model Approval {
 
 model AuditLog {
   id         String      @id @default(cuid())
-  instanceId String
+  instanceId String?
   userId     String
   action     AuditAction
   details    Json        @default("{}")
+  ipAddress  String?
   createdAt  DateTime    @default(now())
 
-  instance WorkflowInstance @relation(fields: [instanceId], references: [id], onDelete: Cascade)
-  user     User             @relation(fields: [userId], references: [id])
+  instance WorkflowInstance? @relation(fields: [instanceId], references: [id], onDelete: Cascade)
+  user     User              @relation(fields: [userId], references: [id])
 
   @@index([instanceId])
   @@index([userId])
@@ -300,4 +697,282 @@ model Comment {
 
   @@index([instanceId])
   @@index([createdAt])
+}
+
+// ──────────────────────────────────────────────
+// DELEGATION (approval proxy while absent)
+// ──────────────────────────────────────────────
+
+model Delegation {
+  id          String    @id @default(cuid())
+  delegatorId String
+  delegateId  String
+  reason      String?
+  startDate   DateTime
+  endDate     DateTime
+  isActive    Boolean   @default(true)
+  createdAt   DateTime  @default(now())
+  revokedAt   DateTime?
+
+  delegator User @relation("DelegationsGiven", fields: [delegatorId], references: [id], onDelete: Cascade)
+  delegate  User @relation("DelegationsReceived", fields: [delegateId], references: [id], onDelete: Cascade)
+
+  @@index([delegatorId, isActive])
+  @@index([delegateId, isActive])
+  @@index([startDate, endDate])
+}
+
+// ──────────────────────────────────────────────
+// WEBHOOKS (external integrations)
+// ──────────────────────────────────────────────
+
+enum WebhookEvent {
+  WORKFLOW_STARTED
+  WORKFLOW_COMPLETED
+  WORKFLOW_CANCELLED
+  TASK_ASSIGNED
+  TASK_COMPLETED
+  APPROVAL_DECISION
+  SLA_BREACHED
+}
+
+enum DeliveryStatus {
+  PENDING
+  SUCCESS
+  FAILED
+  DEAD_LETTER
+}
+
+model Webhook {
+  id          String         @id @default(cuid())
+  name        String
+  url         String
+  secret      String?
+  events      WebhookEvent[]
+  isActive    Boolean        @default(true)
+  createdById String
+  createdAt   DateTime       @default(now())
+  updatedAt   DateTime       @updatedAt
+
+  createdBy  User              @relation(fields: [createdById], references: [id])
+  deliveries WebhookDelivery[]
+
+  @@index([isActive])
+}
+
+model WebhookDelivery {
+  id            String         @id @default(cuid())
+  webhookId     String
+  event         WebhookEvent
+  payload       Json
+  statusCode    Int?
+  response      String?
+  success       Boolean        @default(false)
+  status        DeliveryStatus @default(PENDING)
+  attempts      Int            @default(0)
+  maxRetries    Int            @default(5)
+  lastError     String?
+  nextRetryAt   DateTime?
+  lastAttemptAt DateTime?
+  createdAt     DateTime       @default(now())
+
+  webhook Webhook @relation(fields: [webhookId], references: [id], onDelete: Cascade)
+
+  @@index([webhookId])
+  @@index([createdAt])
+  @@index([success])
+  @@index([status, nextRetryAt])
+}
+
+// ──────────────────────────────────────────────
+// SYSTEM CONFIGURATION
+// ──────────────────────────────────────────────
+
+model SystemConfig {
+  id        String   @id @default(cuid())
+  key       String   @unique
+  value     Json
+  updatedAt DateTime @updatedAt
+
+  @@index([key])
+}
+
+// ──────────────────────────────────────────────
+// PROJECT MANAGEMENT — Milestones, Team, Activity
+// ──────────────────────────────────────────────
+
+model Milestone {
+  id          String          @id @default(cuid())
+  projectId   String
+  title       String
+  description String?
+  targetDate  DateTime
+  completedAt DateTime?
+  sortOrder   Int             @default(0)
+  status      MilestoneStatus @default(PENDING)
+  createdAt   DateTime        @default(now())
+  updatedAt   DateTime        @updatedAt
+
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@index([projectId])
+  @@index([targetDate])
+  @@index([status])
+}
+
+model ProjectMember {
+  id        String   @id @default(cuid())
+  projectId String
+  userId    String
+  role      String   @default("member") // lead, developer, reviewer, member, etc.
+  joinedAt  DateTime @default(now())
+
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([projectId, userId])
+  @@index([projectId])
+  @@index([userId])
+}
+
+model ActivityEvent {
+  id          String       @id @default(cuid())
+  clientId    String?
+  projectId   String?
+  instanceId  String?
+  userId      String
+  type        ActivityType
+  title       String
+  description String?
+  metadata    Json?
+  createdAt   DateTime     @default(now())
+
+  client   Client?            @relation(fields: [clientId], references: [id], onDelete: SetNull)
+  project  Project?           @relation(fields: [projectId], references: [id], onDelete: SetNull)
+  instance WorkflowInstance?  @relation(fields: [instanceId], references: [id], onDelete: SetNull)
+  user     User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([clientId, createdAt])
+  @@index([projectId, createdAt])
+  @@index([instanceId, createdAt])
+  @@index([userId, createdAt])
+  @@index([type])
+}
+
+// ──────────────────────────────────────────────
+// KNOWLEDGE BASE
+// ──────────────────────────────────────────────
+
+model KnowledgeArticle {
+  id          String   @id @default(cuid())
+  title       String
+  content     String   // Markdown content
+  slug        String   @unique
+  excerpt     String?  // Short summary
+  authorId    String
+  clientId    String?  // Optional: scoped to a client
+  projectId   String?  // Optional: scoped to a project
+  isPublished Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  author User                    @relation("ArticleAuthor", fields: [authorId], references: [id])
+  tags   KnowledgeArticleTag[]
+
+  @@index([slug])
+  @@index([authorId])
+  @@index([clientId])
+  @@index([projectId])
+  @@index([isPublished])
+}
+
+model KnowledgeTag {
+  id       String                @id @default(cuid())
+  name     String                @unique
+  color    String                @default("slate")
+  articles KnowledgeArticleTag[]
+}
+
+model KnowledgeArticleTag {
+  articleId String
+  tagId     String
+
+  article KnowledgeArticle @relation(fields: [articleId], references: [id], onDelete: Cascade)
+  tag     KnowledgeTag     @relation(fields: [tagId], references: [id], onDelete: Cascade)
+
+  @@id([articleId, tagId])
+  @@index([articleId])
+  @@index([tagId])
+}
+
+// ──────────────────────────────────────────────
+// PASSWORD RESET TOKENS
+// ──────────────────────────────────────────────
+
+model PasswordResetToken {
+  id        String   @id @default(cuid())
+  userId    String
+  token     String   @unique
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([token])
+  @@index([userId])
+}
+
+// ──────────────────────────────────────────────
+// TWO-FACTOR AUTHENTICATION
+// ──────────────────────────────────────────────
+
+model TwoFactorConfig {
+  id          String          @id @default(cuid())
+  userId      String          @unique
+  method      TwoFactorMethod @default(EMAIL)
+  totpSecret  String?         // Encrypted TOTP secret for authenticator apps
+  isEnabled   Boolean         @default(false)
+  isVerified  Boolean         @default(false) // Has user completed setup verification?
+  backupCodes String[]        // Hashed backup codes for recovery
+  createdAt   DateTime        @default(now())
+  updatedAt   DateTime        @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+// ──────────────────────────────────────────────
+// NOTIFICATION PREFERENCES
+// ──────────────────────────────────────────────
+
+model NotificationPreference {
+  id        String           @id @default(cuid())
+  userId    String
+  type      NotificationType
+  email     Boolean          @default(true)
+  inApp     Boolean          @default(true)
+  createdAt DateTime         @default(now())
+  updatedAt DateTime         @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, type])
+  @@index([userId])
+}
+
+model TwoFactorChallenge {
+  id                String          @id @default(cuid())
+  userId            String
+  code              String          // Hashed OTP code
+  token             String          @unique // Challenge session token
+  method            TwoFactorMethod
+  expiresAt         DateTime
+  usedAt            DateTime?
+  verificationToken String?         @unique // One-time token after successful verification
+  createdAt         DateTime        @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([token])
+  @@index([userId])
 }
