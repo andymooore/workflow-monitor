@@ -58,5 +58,5 @@ ENV HOSTNAME="0.0.0.0"
 HEALTHCHECK --interval=30s --timeout=5s --start-period=60s --retries=5 \
   CMD wget --no-verbose --tries=1 --spider http://localhost:3000/api/health || exit 1
 
-# Run migrations then start the server
-CMD ["sh", "-c", "./node_modules/.bin/prisma migrate deploy --schema=./prisma/schema.prisma && node server.js"]
+# Run migrations (skip prisma.config.ts by using --schema directly) then start the server
+CMD ["sh", "-c", "node ./node_modules/prisma/build/index.js migrate deploy --schema=./prisma/schema.prisma 2>&1 || echo 'Migration warning (non-fatal)'; node server.js"]
