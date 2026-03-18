@@ -37,13 +37,13 @@ ENV NODE_ENV=production
 RUN addgroup --system --gid 1001 nodejs && \
     adduser --system --uid 1001 nextjs
 
-# Copy standalone server + static assets
+# Copy production node_modules FIRST (base layer for runtime deps like Prisma, pg)
+COPY --from=deps /app/node_modules ./node_modules
+
+# Copy standalone server + static assets (overlays traced modules on top)
 COPY --from=builder /app/public ./public
 COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
 COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
-
-# Copy production node_modules (for Prisma, pg, etc. that standalone may not trace)
-COPY --from=deps /app/node_modules ./node_modules
 
 # Copy Prisma generated client (Prisma v7 outputs to src/generated/prisma)
 COPY --from=builder /app/src/generated ./src/generated
