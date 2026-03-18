@@ -61,9 +61,8 @@ EXPOSE 3000
 ENV PORT=3000
 ENV HOSTNAME="0.0.0.0"
 
-# Health check
-HEALTHCHECK --interval=30s --timeout=5s --start-period=30s --retries=3 \
-  CMD wget --no-verbose --tries=1 --spider http://localhost:3000/api/health || exit 1
+# No healthcheck - let it run even if unhealthy so we can see logs
+HEALTHCHECK NONE
 
-# Start the server directly (run migrations via scheduled task or manually)
-CMD ["node", "server.js"]
+# Capture startup errors to a file, then start server
+CMD ["sh", "-c", "node server.js > /tmp/app.log 2>&1; echo EXIT_CODE=$?; cat /tmp/app.log; sleep 3600"]
