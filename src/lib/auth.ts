@@ -28,7 +28,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       async authorize(credentials) {
         if (!credentials?.email || !credentials?.password) return null;
 
-        const email = credentials.email as string;
+        const email = (credentials.email as string).toLowerCase().trim();
         const password = credentials.password as string;
         const twoFactorToken = (credentials.twoFactorToken as string) || "";
 
@@ -37,7 +37,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         if (typeof password !== "string" || password.length > 128) return null;
 
         // Restrict login to allowed email domain
-        if (!email.toLowerCase().endsWith(`@${env.AUTH_ALLOWED_DOMAIN}`)) return null;
+        if (!email.endsWith(`@${env.AUTH_ALLOWED_DOMAIN}`)) return null;
 
         const user = await prisma.user.findUnique({
           where: { email },

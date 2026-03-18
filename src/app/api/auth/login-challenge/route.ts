@@ -45,14 +45,17 @@ export async function POST(req: NextRequest) {
       return errorResponse(ApiError.unauthorized("Invalid credentials"));
     }
 
+    // Normalize email to lowercase for consistent matching
+    const normalizedEmail = email.toLowerCase().trim();
+
     // Restrict login to allowed email domain
-    if (!email.toLowerCase().endsWith(`@${env.AUTH_ALLOWED_DOMAIN}`)) {
+    if (!normalizedEmail.endsWith(`@${env.AUTH_ALLOWED_DOMAIN}`)) {
       return errorResponse(ApiError.unauthorized("Invalid credentials"));
     }
 
     // Look up user
     const user = await prisma.user.findUnique({
-      where: { email },
+      where: { email: normalizedEmail },
       select: {
         id: true,
         name: true,
