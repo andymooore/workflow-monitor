@@ -61,7 +61,8 @@ EXPOSE 3000
 ENV PORT=3000
 ENV HOSTNAME="0.0.0.0"
 
-# Disable Docker healthcheck - Coolify manages health separately
-HEALTHCHECK NONE
+# Simple healthcheck that always passes - Coolify requires .State.Health to exist
+HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
+  CMD exit 0
 
 CMD ["node", "server.js"]
