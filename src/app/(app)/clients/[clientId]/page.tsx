@@ -345,7 +345,7 @@ export default function ClientProfilePage() {
                       <div>
                         <div className="flex items-center gap-2">
                           <FolderOpen className="size-4 text-muted-foreground" />
-                          <h3 className="font-semibold">{p.name}</h3>
+                          <Link href={`/projects/${p.id}`} className="font-semibold hover:underline">{p.name}</Link>
                           {!p.isActive && <Badge variant="outline" className="text-[10px]">Inactive</Badge>}
                         </div>
                         {p.description && <p className="mt-1 text-sm text-muted-foreground">{p.description}</p>}

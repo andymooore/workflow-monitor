@@ -297,7 +297,9 @@ export default function AdminClientsPage() {
                     </div>
                     <div className="min-w-0">
                       <div className="flex items-center gap-2">
-                        <h3 className="font-semibold">{client.name}</h3>
+                        <Link href={`/clients/${client.id}`} className="font-semibold hover:underline">
+                          {client.name}
+                        </Link>
                         <Badge variant="outline" className="text-[10px] font-mono">
                           {client.shortCode}
                         </Badge>
@@ -363,6 +365,12 @@ export default function AdminClientsPage() {
                         <Archive className="size-3.5 text-destructive" />
                       </Button>
                     </div>
+                    <Link href={`/clients/${client.id}`}>
+                      <Button variant="outline" size="xs" className="mt-1">
+                        <Building2 className="size-3" data-icon="inline-start" />
+                        View Profile
+                      </Button>
+                    </Link>
                     <Link href={`/admin/clients/${client.id}`}>
                       <Button variant="outline" size="xs" className="mt-1">
                         <Users className="size-3" data-icon="inline-start" />
