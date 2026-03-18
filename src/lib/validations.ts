@@ -453,6 +453,26 @@ export const addUserRoleSchema = z.object({
 });
 
 // ---------------------------------------------------------------------------
+// Invitation schemas (invite-only registration)
+// ---------------------------------------------------------------------------
+export const createInvitationSchema = z.object({
+  name: z
+    .string()
+    .min(1, "Name is required")
+    .max(200, "Name must be 200 characters or fewer"),
+  email: govEmailSchema,
+  roleId: z.string().optional().nullable(),
+});
+
+export const acceptInvitationSchema = z.object({
+  token: z.string().min(1, "Invitation token is required"),
+  password: passwordSchema,
+});
+
+export type CreateInvitationInput = z.infer<typeof createInvitationSchema>;
+export type AcceptInvitationInput = z.infer<typeof acceptInvitationSchema>;
+
+// ---------------------------------------------------------------------------
 // System settings schema
 // ---------------------------------------------------------------------------
 export const systemSettingsSchema = z.object({

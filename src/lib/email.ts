@@ -235,6 +235,20 @@ export function twoFactorCodeEmail(name: string, code: string) {
   };
 }
 
+export function invitationEmail(name: string, inviterName: string, acceptUrl: string, expiresInDays: number) {
+  return {
+    subject: `[WorkFlowPro] You've been invited to join WorkFlowPro`,
+    html: emailWrapper(`
+      <h2 style="color: #f8fafc; margin-top: 0;">You're Invited</h2>
+      <p>Hi <strong style="color: #f8fafc;">${escapeHtml(name)}</strong>,</p>
+      <p><strong style="color: #f8fafc;">${escapeHtml(inviterName)}</strong> has invited you to join <strong style="color: #3b82f6;">WorkFlowPro</strong>, the enterprise workflow management platform.</p>
+      <p>Click the button below to set up your account. This invitation expires in <strong style="color: #f8fafc;">${expiresInDays} days</strong>.</p>
+      ${actionButton("Accept Invitation", acceptUrl, "#10b981")}
+      <p style="font-size: 12px; margin-top: 24px; color: #64748b;">If you weren't expecting this invitation, you can safely ignore this email.</p>
+    `),
+  };
+}
+
 export function passwordResetEmail(name: string, resetUrl: string) {
   return {
     subject: `[WorkFlowPro] Password reset request`,

@@ -138,6 +138,13 @@ enum ApprovalStrategy {
   SEQUENTIAL
 }
 
+enum InvitationStatus {
+  PENDING
+  ACCEPTED
+  EXPIRED
+  REVOKED
+}
+
 enum AuditAction {
   WORKFLOW_CREATED
   WORKFLOW_STARTED
@@ -196,6 +203,9 @@ enum AuditAction {
   KNOWLEDGE_ARTICLE_CREATED
   KNOWLEDGE_ARTICLE_UPDATED
   KNOWLEDGE_ARTICLE_DELETED
+  INVITATION_SENT
+  INVITATION_ACCEPTED
+  INVITATION_REVOKED
 }
 
 enum ConditionBranch {
@@ -423,6 +433,7 @@ model User {
   twoFactorConfig             TwoFactorConfig?
   twoFactorChallenges         TwoFactorChallenge[]
   notificationPreferences     NotificationPreference[]
+  invitationsCreated          Invitation[]           @relation("InvitationsCreated")
 
   @@index([email])
 }
@@ -435,6 +446,7 @@ model Role {
 
   users           UserRole[]
   nodeAssignments WorkflowNodeRoleAssignment[]
+  invitations     Invitation[]
 }
 
 model UserRole {
@@ -975,4 +987,29 @@ model TwoFactorChallenge {
 
   @@index([token])
   @@index([userId])
+}
+
+// ──────────────────────────────────────────────
+// INVITATIONS (invite-only registration)
+// ──────────────────────────────────────────────
+
+model Invitation {
+  id          String           @id @default(cuid())
+  email       String
+  name        String
+  roleId      String?
+  token       String           @unique
+  status      InvitationStatus @default(PENDING)
+  expiresAt   DateTime
+  invitedById String
+  acceptedAt  DateTime?
+  createdAt   DateTime         @default(now())
+
+  invitedBy User  @relation("InvitationsCreated", fields: [invitedById], references: [id])
+  role      Role? @relation(fields: [roleId], references: [id])
+
+  @@index([token])
+  @@index([email])
+  @@index([status])
+  @@index([invitedById])
 }

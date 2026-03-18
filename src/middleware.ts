@@ -17,10 +17,12 @@ const PUBLIC_PATHS = [
   "/login",
   "/forgot-password",
   "/reset-password",
+  "/accept-invite",
   "/api/auth",
   "/api/health",
   "/api/auth/login-challenge",
   "/api/auth/verify-2fa",
+  "/api/auth/accept-invite",
 ];
 
 function isProtectedRoute(pathname: string): boolean {
