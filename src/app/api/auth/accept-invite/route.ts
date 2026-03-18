@@ -4,6 +4,7 @@ import { prisma } from "@/lib/db";
 import { acceptInvitationSchema } from "@/lib/validations";
 import { rateLimit, getClientIp } from "@/lib/rate-limit";
 import { logger } from "@/lib/logger";
+import { reassignFallbackTasks } from "@/lib/role-reassign";
 
 // ---------------------------------------------------------------------------
 // GET /api/auth/accept-invite?token=xxx
@@ -232,6 +233,11 @@ export async function POST(request: NextRequest) {
 
       return newUser;
     });
+
+    // Reassign any fallback tasks that match the new user's role (fire-and-forget)
+    if (invitation.roleId) {
+      reassignFallbackTasks(result.id, [invitation.roleId]).catch(() => {});
+    }
 
     return NextResponse.json(
       { success: true, email: result.email },

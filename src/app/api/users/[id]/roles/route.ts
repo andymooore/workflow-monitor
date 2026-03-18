@@ -4,6 +4,7 @@ import { withAdminAuth, ApiError } from "@/lib/api-utils";
 import { addUserRoleSchema } from "@/lib/validations";
 import { rateLimit, getClientIp } from "@/lib/rate-limit";
 import { logAdminAction } from "@/lib/audit";
+import { reassignFallbackTasks } from "@/lib/role-reassign";
 
 // ---------------------------------------------------------------------------
 // POST /api/users/[id]/roles
@@ -58,6 +59,9 @@ export const POST = withAdminAuth({
       details: { targetUserId: params.id, roleId: body.roleId },
       ipAddress: getClientIp(request),
     });
+
+    // Reassign any fallback tasks that match the new role (fire-and-forget)
+    reassignFallbackTasks(userId, [roleId]).catch(() => {});
 
     return NextResponse.json(userRole, { status: 201 });
   },
