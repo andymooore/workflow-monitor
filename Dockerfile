@@ -61,8 +61,7 @@ EXPOSE 3000
 ENV PORT=3000
 ENV HOSTNAME="0.0.0.0"
 
-# No healthcheck - let it run even if unhealthy so we can see logs
+# Disable Docker healthcheck - Coolify manages health separately
 HEALTHCHECK NONE
 
-# Capture startup errors to a file, then start server
-CMD ["sh", "-c", "node server.js > /tmp/app.log 2>&1; echo EXIT_CODE=$?; cat /tmp/app.log; sleep 3600"]
+CMD ["node", "server.js"]
