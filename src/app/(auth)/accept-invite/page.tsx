@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { Suspense, useState, useEffect, useCallback } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { Input } from "@/components/ui/input";
@@ -23,6 +23,20 @@ import { cn } from "@/lib/utils";
 
 type PageState = "loading" | "valid" | "invalid" | "success";
 
+export default function AcceptInvitePageWrapper() {
+  return (
+    <Suspense
+      fallback={
+        <div className="flex min-h-screen items-center justify-center bg-[oklch(0.08_0.02_260)]">
+          <Loader2 className="h-8 w-8 animate-spin text-[oklch(0.65_0.15_195)]" />
+        </div>
+      }
+    >
+      <AcceptInvitePage />
+    </Suspense>
+  );
+}
+
 interface InviteInfo {
   email: string;
   name: string;
@@ -40,7 +54,7 @@ const PASSWORD_RULES = [
   },
 ];
 
-export default function AcceptInvitePage() {
+function AcceptInvitePage() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const token = searchParams.get("token") ?? "";
