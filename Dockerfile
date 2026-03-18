@@ -67,4 +67,4 @@ HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
   CMD exit 0
 
 # Run migrations + seed, then start server
-CMD ["sh", "-c", "node scripts/migrate-prod.js && node scripts/seed-prod.js; node server.js"]
+CMD ["sh", "-c", "node scripts/migrate-prod.js && node scripts/seed-prod.js && node server.js"]

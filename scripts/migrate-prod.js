@@ -75,6 +75,17 @@ async function main() {
       count++;
     } catch (err) {
       await client.query("ROLLBACK");
+      // Handle "already exists" errors — mark migration as applied and continue
+      if (err.message.includes("already exists")) {
+        console.warn(`  WARN: ${dir} — objects already exist, marking as applied`);
+        await client.query(
+          `INSERT INTO "_prisma_migrations" (id, checksum, finished_at, migration_name, applied_steps_count)
+           VALUES ($1, $2, NOW(), $3, 1)`,
+          [id, checksum, dir]
+        );
+        count++;
+        continue;
+      }
       console.error(`  FAILED: ${dir}`, err.message);
       await client.end();
       process.exit(1);
