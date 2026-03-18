@@ -61,9 +61,9 @@ EXPOSE 3000
 ENV PORT=3000
 ENV HOSTNAME="0.0.0.0"
 
-# Health check - give extra time for migrations on first start
-HEALTHCHECK --interval=30s --timeout=5s --start-period=60s --retries=5 \
+# Health check
+HEALTHCHECK --interval=30s --timeout=5s --start-period=30s --retries=3 \
   CMD wget --no-verbose --tries=1 --spider http://localhost:3000/api/health || exit 1
 
-# Run migrations then start the server
-CMD ["sh", "-c", "npx prisma migrate deploy --schema=./prisma/schema.prisma 2>&1 || echo 'Migration warning (non-fatal)'; node server.js"]
+# Start the server directly (run migrations via scheduled task or manually)
+CMD ["node", "server.js"]
