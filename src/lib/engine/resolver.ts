@@ -50,9 +50,8 @@ export class RoleResolver {
     });
 
     if (!userRole) {
-      throw new Error(
-        `RoleResolver: no active user found for roles [${roleIds.join(", ")}] on node "${node.label}" (${node.id})`,
-      );
+      // Fallback: assign to instance owner when no user with the required role exists
+      return instanceOwnerId;
     }
 
     return userRole.userId;
@@ -96,9 +95,8 @@ export class RoleResolver {
     }
 
     if (approverIds.size === 0) {
-      throw new Error(
-        `RoleResolver: no approvers found for node "${node.label}" (${node.id})`,
-      );
+      // Fallback: assign to instance owner when no user with the required role exists
+      approverIds.add(instanceOwnerId);
     }
 
     // Check for active delegations — include delegates as additional approvers
