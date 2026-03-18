@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 /**
  * Production seed script - creates initial roles and admin user using pg directly.
+ * Column names match the Prisma schema exactly.
  */
 const { Client } = require("pg");
 const crypto = require("crypto");
@@ -11,11 +12,8 @@ if (!DATABASE_URL) {
   process.exit(1);
 }
 
-// Simple bcrypt-compatible hash using Node.js crypto (for seeding only)
-// We'll use a pre-computed bcrypt hash for the default password
-// Password: "Admin@2026!"
-// bcrypt hash (cost 10):
-const ADMIN_PASSWORD_HASH = "$2b$10$aAGNGJ1YdnOuv7AzyXf/N.kaPQL96XNXhpXcNzFtlUkxmCNtAraju";
+// Pre-computed bcrypt hash for "Admin@2026!" (cost 12, matches auth.ts)
+const ADMIN_PASSWORD_HASH = "$2b$12$765xGgoPjbiaM1/lk4aTB.qtW5eXYf0vJ9aoGZYobxVIHCX8QVAou";
 
 async function main() {
   const client = new Client({ connectionString: DATABASE_URL });
@@ -27,7 +25,19 @@ async function main() {
     `SELECT id FROM "Role" LIMIT 1`
   );
   if (existingRoles.length > 0) {
-    console.log("Database already seeded (roles exist). Skipping.");
+    console.log("Database already seeded (roles exist). Checking admin user...");
+
+    // Ensure admin user exists even if roles were previously seeded
+    const { rows: adminCheck } = await client.query(
+      `SELECT id FROM "User" WHERE email = 'admin@jis.gov.jm'`
+    );
+    if (adminCheck.length === 0) {
+      console.log("Admin user missing, creating...");
+      await createAdminUser(client);
+    } else {
+      console.log("Admin user exists. Skipping.");
+    }
+
     await client.end();
     return;
   }
@@ -48,8 +58,8 @@ async function main() {
   for (const role of roles) {
     const id = crypto.randomUUID();
     await client.query(
-      `INSERT INTO "Role" (id, name, description, "createdAt", "updatedAt")
-       VALUES ($1, $2, $3, NOW(), NOW()) ON CONFLICT (name) DO NOTHING RETURNING id`,
+      `INSERT INTO "Role" (id, name, description, "createdAt")
+       VALUES ($1, $2, $3, NOW()) ON CONFLICT (name) DO NOTHING`,
       [id, role.name, role.description]
     );
     const { rows } = await client.query(`SELECT id FROM "Role" WHERE name = $1`, [role.name]);
@@ -57,35 +67,51 @@ async function main() {
     console.log(`  role: ${role.name}`);
   }
 
-  console.log("Seeding admin user...");
-  const adminId = crypto.randomUUID();
-  await client.query(
-    `INSERT INTO "User" (id, name, email, password, "isActive", "createdAt", "updatedAt")
-     VALUES ($1, $2, $3, $4, true, NOW(), NOW())
-     ON CONFLICT (email) DO NOTHING`,
-    [adminId, "System Admin", "admin@jis.gov.jm", ADMIN_PASSWORD_HASH]
-  );
-
-  // Get the actual admin ID (in case it already existed)
-  const { rows: adminRows } = await client.query(
-    `SELECT id FROM "User" WHERE email = 'admin@jis.gov.jm'`
-  );
-  const actualAdminId = adminRows[0].id;
-
-  // Assign admin role
-  await client.query(
-    `INSERT INTO "UserRole" (id, "userId", "roleId", "assignedAt")
-     VALUES ($1, $2, $3, NOW())
-     ON CONFLICT DO NOTHING`,
-    [crypto.randomUUID(), actualAdminId, roleIds["admin"]]
-  );
-  console.log("  user: admin@jis.gov.jm (password: Admin@2026!)");
+  await createAdminUser(client, roleIds["admin"]);
 
   console.log("Seed complete!");
   await client.end();
 }
 
+async function createAdminUser(client, adminRoleId) {
+  // If no roleId passed, look it up
+  if (!adminRoleId) {
+    const { rows } = await client.query(`SELECT id FROM "Role" WHERE name = 'admin'`);
+    if (rows.length === 0) {
+      console.error("Admin role not found!");
+      return;
+    }
+    adminRoleId = rows[0].id;
+  }
+
+  const adminId = crypto.randomUUID();
+
+  // Use correct column names matching Prisma schema:
+  // passwordHash (not password), status (not isActive)
+  await client.query(
+    `INSERT INTO "User" (id, name, email, "passwordHash", status, "createdAt", "updatedAt")
+     VALUES ($1, $2, $3, $4, 'ACTIVE', NOW(), NOW())
+     ON CONFLICT (email) DO UPDATE SET "passwordHash" = $4, "updatedAt" = NOW()`,
+    [adminId, "System Admin", "admin@jis.gov.jm", ADMIN_PASSWORD_HASH]
+  );
+
+  // Get the actual admin ID
+  const { rows: adminRows } = await client.query(
+    `SELECT id FROM "User" WHERE email = 'admin@jis.gov.jm'`
+  );
+  const actualAdminId = adminRows[0].id;
+
+  // Assign admin role (UserRole has no assignedAt column)
+  await client.query(
+    `INSERT INTO "UserRole" (id, "userId", "roleId")
+     VALUES ($1, $2, $3)
+     ON CONFLICT ("userId", "roleId") DO NOTHING`,
+    [crypto.randomUUID(), actualAdminId, adminRoleId]
+  );
+  console.log("  user: admin@jis.gov.jm (password: Admin@2026!)");
+}
+
 main().catch((err) => {
-  console.error(err);
+  console.error("Seed error:", err);
   process.exit(1);
 });
