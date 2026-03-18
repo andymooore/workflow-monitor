@@ -5,6 +5,10 @@ const nextConfig: NextConfig = {
   typescript: {
     ignoreBuildErrors: true,
   },
+  serverExternalPackages: [
+    "@prisma/adapter-pg",
+    "@prisma/client",
+  ],
   experimental: {
     missingSuspenseWithCSRBailout: false,
   },

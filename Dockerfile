@@ -6,12 +6,18 @@
 FROM node:22-alpine AS deps
 WORKDIR /app
 COPY package.json package-lock.json ./
+RUN npm ci --omit=dev
+
+# ── Stage 1b: Full dependencies for build ────────────────────────────────────
+FROM node:22-alpine AS deps-full
+WORKDIR /app
+COPY package.json package-lock.json ./
 RUN npm ci
 
 # ── Stage 2: Build ───────────────────────────────────────────────────────────
 FROM node:22-alpine AS builder
 WORKDIR /app
-COPY --from=deps /app/node_modules ./node_modules
+COPY --from=deps-full /app/node_modules ./node_modules
 COPY . .
 
 # Generate Prisma Client
@@ -36,14 +42,15 @@ COPY --from=builder /app/public ./public
 COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
 COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
 
-# Copy Prisma schema + migrations + generated client (Prisma v7 generates to src/generated/prisma)
+# Copy production node_modules (for Prisma, pg, etc. that standalone may not trace)
+COPY --from=deps /app/node_modules ./node_modules
+
+# Copy Prisma generated client (Prisma v7 outputs to src/generated/prisma)
+COPY --from=builder /app/src/generated ./src/generated
+
+# Copy Prisma schema + migrations for runtime migration support
 COPY --from=builder /app/prisma ./prisma
 COPY --from=builder /app/prisma.config.ts ./prisma.config.ts
-COPY --from=builder /app/src/generated ./src/generated
-COPY --from=builder /app/node_modules/@prisma ./node_modules/@prisma
-COPY --from=builder /app/node_modules/prisma ./node_modules/prisma
-COPY --from=builder /app/node_modules/.bin/prisma ./node_modules/.bin/prisma
-COPY --from=builder /app/node_modules/dotenv ./node_modules/dotenv
 
 # Create upload directory with correct permissions
 RUN mkdir -p /app/uploads && chown -R nextjs:nodejs /app/uploads
@@ -58,5 +65,5 @@ ENV HOSTNAME="0.0.0.0"
 HEALTHCHECK --interval=30s --timeout=5s --start-period=60s --retries=5 \
   CMD wget --no-verbose --tries=1 --spider http://localhost:3000/api/health || exit 1
 
-# Run migrations (skip prisma.config.ts by using --schema directly) then start the server
-CMD ["sh", "-c", "node ./node_modules/prisma/build/index.js migrate deploy --schema=./prisma/schema.prisma 2>&1 || echo 'Migration warning (non-fatal)'; node server.js"]
+# Run migrations then start the server
+CMD ["sh", "-c", "npx prisma migrate deploy --schema=./prisma/schema.prisma 2>&1 || echo 'Migration warning (non-fatal)'; node server.js"]
