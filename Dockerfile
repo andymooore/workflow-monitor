@@ -51,6 +51,7 @@ COPY --from=builder /app/src/generated ./src/generated
 # Copy Prisma schema + migrations for runtime migration support
 COPY --from=builder /app/prisma ./prisma
 COPY --from=builder /app/prisma.config.ts ./prisma.config.ts
+COPY --from=builder /app/scripts ./scripts
 
 # Create upload directory with correct permissions
 RUN mkdir -p /app/uploads && chown -R nextjs:nodejs /app/uploads
@@ -65,4 +66,5 @@ ENV HOSTNAME="0.0.0.0"
 HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
   CMD exit 0
 
-CMD ["node", "server.js"]
+# Run migrations + seed, then start server
+CMD ["sh", "-c", "node scripts/migrate-prod.js && node scripts/seed-prod.js; node server.js"]
