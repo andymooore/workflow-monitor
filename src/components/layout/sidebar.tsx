@@ -16,6 +16,7 @@ import {
   FileText,
   Activity,
   FolderOpen,
+  Layers,
   Settings,
   Building2,
   Landmark,
@@ -51,7 +52,8 @@ const adminNav = [
   { name: "Instances", href: "/instances", icon: Activity },
   { name: "Ministries", href: "/admin/ministries", icon: Landmark },
   { name: "Clients", href: "/admin/clients", icon: Building2 },
-  { name: "Categories", href: "/admin/categories", icon: FolderOpen },
+  { name: "Projects", href: "/admin/projects", icon: FolderOpen },
+  { name: "Categories", href: "/admin/categories", icon: Layers },
   { name: "Users", href: "/admin/users", icon: Users },
   { name: "Roles", href: "/admin/roles", icon: Tags },
 ];

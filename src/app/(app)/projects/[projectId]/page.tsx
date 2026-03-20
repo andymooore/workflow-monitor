@@ -30,6 +30,14 @@ import {
   FolderOpen,
   TrendingUp,
   CircleDot,
+  Globe,
+  Upload,
+  Download,
+  Image,
+  FileText,
+  ChevronDown,
+  ChevronRight,
+  ExternalLink,
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -150,6 +158,33 @@ interface ActivityResponse {
   page: number;
   limit: number;
   totalPages: number;
+}
+
+interface AssetVersion {
+  id: string;
+  title: string;
+  version: number;
+  fileName: string | null;
+  fileUrl: string | null;
+  description: string | null;
+  assetCategory: string;
+  groupId: string;
+  createdAt: string;
+  uploadedBy: { id: string; name: string };
+}
+
+interface AssetGroup {
+  groupId: string;
+  title: string;
+  latestVersion: number;
+  assetCategory: string;
+  versions: AssetVersion[];
+}
+
+interface AssetsResponse {
+  mockups: AssetGroup[];
+  drafts: AssetGroup[];
+  assets: AssetGroup[];
 }
 
 interface UserOption {
@@ -309,12 +344,95 @@ export default function ProjectDetailPage() {
     { interval: 15000, enabled: activeTab === "activity" },
   );
 
+  // Fetch assets (only when on website tab)
+  const { data: assetsData, refetch: refetchAssets } = usePolling<AssetsResponse>(
+    `/api/projects/${projectId}/assets`,
+    { interval: 30000, enabled: activeTab === "website" },
+  );
+
   // Fetch users for add-member dialog
   const { data: usersRes } = usePolling<{ data: UserOption[]; total: number }>(
     "/api/users",
     { interval: 60000 },
   );
   const availableUsers = usersRes?.data ?? [];
+
+  // ---- Asset upload state ----
+  const [assetUploadOpen, setAssetUploadOpen] = useState(false);
+  const [uploadCategory, setUploadCategory] = useState<"MOCKUP" | "DRAFT">("MOCKUP");
+  const [uploadGroupId, setUploadGroupId] = useState<string | null>(null);
+  const [uploadFile, setUploadFile] = useState<File | null>(null);
+  const [uploadTitle, setUploadTitle] = useState("");
+  const [uploadDescription, setUploadDescription] = useState("");
+  const [isUploading, setIsUploading] = useState(false);
+  const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set());
+
+  const openAssetUpload = useCallback((category: "MOCKUP" | "DRAFT", groupId: string | null = null, existingTitle = "") => {
+    setUploadCategory(category);
+    setUploadGroupId(groupId);
+    setUploadFile(null);
+    setUploadTitle(existingTitle);
+    setUploadDescription("");
+    setAssetUploadOpen(true);
+  }, []);
+
+  const toggleGroupExpand = useCallback((groupId: string) => {
+    setExpandedGroups((prev) => {
+      const next = new Set(prev);
+      if (next.has(groupId)) next.delete(groupId);
+      else next.add(groupId);
+      return next;
+    });
+  }, []);
+
+  const handleAssetUpload = useCallback(async () => {
+    if (!uploadFile || !uploadTitle.trim()) {
+      toast.error("File and title are required");
+      return;
+    }
+    setIsUploading(true);
+    try {
+      const fd = new FormData();
+      fd.append("file", uploadFile);
+      fd.append("title", uploadTitle.trim());
+      fd.append("assetCategory", uploadCategory);
+      if (uploadGroupId) fd.append("groupId", uploadGroupId);
+      if (uploadDescription.trim()) fd.append("description", uploadDescription.trim());
+
+      const res = await fetch(`/api/projects/${projectId}/assets`, {
+        method: "POST",
+        body: fd,
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({ error: "Upload failed" }));
+        toast.error(err.error?.message ?? err.error ?? "Upload failed");
+        return;
+      }
+      toast.success(uploadGroupId ? "New version uploaded" : "Asset uploaded");
+      setAssetUploadOpen(false);
+      refetchAssets();
+    } catch {
+      toast.error("Upload failed");
+    } finally {
+      setIsUploading(false);
+    }
+  }, [uploadFile, uploadTitle, uploadCategory, uploadGroupId, uploadDescription, projectId, refetchAssets]);
+
+  const handleDeleteAsset = useCallback(async (assetId: string) => {
+    try {
+      const res = await fetch(`/api/projects/${projectId}/assets/${assetId}`, {
+        method: "DELETE",
+      });
+      if (!res.ok) {
+        toast.error("Failed to delete asset");
+        return;
+      }
+      toast.success("Asset version deleted");
+      refetchAssets();
+    } catch {
+      toast.error("Failed to delete asset");
+    }
+  }, [projectId, refetchAssets]);
 
   // ---- Status change handler ----
   const [isChangingStatus, setIsChangingStatus] = useState(false);
@@ -704,6 +822,10 @@ export default function ProjectDetailPage() {
           <TabsTrigger value="activity" className="gap-1.5">
             <Activity className="size-3.5" />
             Activity
+          </TabsTrigger>
+          <TabsTrigger value="website" className="gap-1.5">
+            <Globe className="size-3.5" />
+            Website
           </TabsTrigger>
         </TabsList>
 
@@ -1115,7 +1237,215 @@ export default function ProjectDetailPage() {
             </Card>
           </div>
         </TabsContent>
+
+        {/* ════════════════════════════════════════════════════════════ */}
+        {/* WEBSITE TAB                                                 */}
+        {/* ════════════════════════════════════════════════════════════ */}
+        <TabsContent value="website">
+          <div className="mt-4 space-y-8">
+            {/* Environment URLs */}
+            {(project.stagingUrl || project.liveUrl) && (
+              <Card>
+                <CardHeader className="pb-3">
+                  <CardTitle className="text-sm font-semibold flex items-center gap-2">
+                    <Globe className="size-4 text-muted-foreground" />
+                    Environments
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="pt-0">
+                  <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                    {project.stagingUrl && (
+                      <a
+                        href={project.stagingUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="flex items-center gap-2 rounded-lg border p-3 text-sm transition-colors hover:bg-muted/50"
+                      >
+                        <div className="flex size-8 items-center justify-center rounded-md bg-amber-50 dark:bg-amber-950/40">
+                          <Globe className="size-4 text-amber-600 dark:text-amber-400" />
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <p className="text-xs font-medium text-muted-foreground">Staging</p>
+                          <p className="truncate text-xs">{project.stagingUrl}</p>
+                        </div>
+                        <ExternalLink className="size-3.5 text-muted-foreground" />
+                      </a>
+                    )}
+                    {project.liveUrl && (
+                      <a
+                        href={project.liveUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="flex items-center gap-2 rounded-lg border p-3 text-sm transition-colors hover:bg-muted/50"
+                      >
+                        <div className="flex size-8 items-center justify-center rounded-md bg-emerald-50 dark:bg-emerald-950/40">
+                          <Globe className="size-4 text-emerald-600 dark:text-emerald-400" />
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <p className="text-xs font-medium text-muted-foreground">Production</p>
+                          <p className="truncate text-xs">{project.liveUrl}</p>
+                        </div>
+                        <ExternalLink className="size-3.5 text-muted-foreground" />
+                      </a>
+                    )}
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+
+            {/* Mockups Section */}
+            <div className="space-y-3">
+              <div className="flex items-center justify-between">
+                <h3 className="text-sm font-semibold flex items-center gap-2">
+                  <Image className="size-4 text-muted-foreground" />
+                  Mockups
+                  <Badge variant="secondary" className="text-[10px] h-4 px-1">
+                    {assetsData?.mockups.length ?? 0}
+                  </Badge>
+                </h3>
+                <Button size="sm" variant="outline" onClick={() => openAssetUpload("MOCKUP")}>
+                  <Upload className="size-3.5" data-icon="inline-start" />
+                  Upload Mockup
+                </Button>
+              </div>
+
+              {(assetsData?.mockups.length ?? 0) > 0 ? (
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                  {assetsData!.mockups.map((group) => (
+                    <AssetGroupCard
+                      key={group.groupId}
+                      group={group}
+                      expanded={expandedGroups.has(group.groupId)}
+                      onToggle={() => toggleGroupExpand(group.groupId)}
+                      onAddVersion={() => openAssetUpload("MOCKUP", group.groupId, group.title)}
+                      onDelete={handleDeleteAsset}
+                      isAdmin={isAdmin}
+                    />
+                  ))}
+                </div>
+              ) : (
+                <Card className="border-dashed">
+                  <CardContent className="flex flex-col items-center justify-center py-10">
+                    <Image className="size-8 text-muted-foreground/30" />
+                    <p className="mt-2 text-sm text-muted-foreground">No mockups yet</p>
+                    <p className="mt-0.5 text-xs text-muted-foreground/70">Upload design mockups, screenshots, or wireframes</p>
+                  </CardContent>
+                </Card>
+              )}
+            </div>
+
+            {/* Drafts Section */}
+            <div className="space-y-3">
+              <div className="flex items-center justify-between">
+                <h3 className="text-sm font-semibold flex items-center gap-2">
+                  <FileText className="size-4 text-muted-foreground" />
+                  Drafts
+                  <Badge variant="secondary" className="text-[10px] h-4 px-1">
+                    {assetsData?.drafts.length ?? 0}
+                  </Badge>
+                </h3>
+                <Button size="sm" variant="outline" onClick={() => openAssetUpload("DRAFT")}>
+                  <Upload className="size-3.5" data-icon="inline-start" />
+                  Upload Draft
+                </Button>
+              </div>
+
+              {(assetsData?.drafts.length ?? 0) > 0 ? (
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                  {assetsData!.drafts.map((group) => (
+                    <AssetGroupCard
+                      key={group.groupId}
+                      group={group}
+                      expanded={expandedGroups.has(group.groupId)}
+                      onToggle={() => toggleGroupExpand(group.groupId)}
+                      onAddVersion={() => openAssetUpload("DRAFT", group.groupId, group.title)}
+                      onDelete={handleDeleteAsset}
+                      isAdmin={isAdmin}
+                    />
+                  ))}
+                </div>
+              ) : (
+                <Card className="border-dashed">
+                  <CardContent className="flex flex-col items-center justify-center py-10">
+                    <FileText className="size-8 text-muted-foreground/30" />
+                    <p className="mt-2 text-sm text-muted-foreground">No drafts yet</p>
+                    <p className="mt-0.5 text-xs text-muted-foreground/70">Upload document drafts with version tracking</p>
+                  </CardContent>
+                </Card>
+              )}
+            </div>
+          </div>
+        </TabsContent>
       </Tabs>
+
+      {/* ── Asset Upload Dialog ──────────────────────────────────── */}
+      <Dialog open={assetUploadOpen} onOpenChange={setAssetUploadOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>
+              {uploadGroupId
+                ? "Upload New Version"
+                : `Upload ${uploadCategory === "MOCKUP" ? "Mockup" : "Draft"}`}
+            </DialogTitle>
+            <DialogDescription>
+              {uploadGroupId
+                ? "Add a new version to this asset"
+                : `Upload a new ${uploadCategory.toLowerCase()} for this project`}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="space-y-1.5">
+              <Label htmlFor="asset-title">Title *</Label>
+              <Input
+                id="asset-title"
+                placeholder="Homepage design v1"
+                value={uploadTitle}
+                onChange={(e) => setUploadTitle(e.target.value)}
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="asset-file">File *</Label>
+              <Input
+                id="asset-file"
+                type="file"
+                accept=".pdf,.png,.jpg,.jpeg,.webp,.gif,.doc,.docx,.pptx"
+                onChange={(e) => setUploadFile(e.target.files?.[0] ?? null)}
+              />
+              <p className="text-[11px] text-muted-foreground">
+                Max 10MB. Supported: PDF, PNG, JPG, WEBP, GIF, DOC, DOCX, PPTX
+              </p>
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="asset-desc">Notes</Label>
+              <Textarea
+                id="asset-desc"
+                placeholder="What changed in this version..."
+                value={uploadDescription}
+                onChange={(e) => setUploadDescription(e.target.value)}
+                rows={2}
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setAssetUploadOpen(false)}>
+              Cancel
+            </Button>
+            <Button onClick={handleAssetUpload} disabled={isUploading || !uploadFile}>
+              {isUploading ? (
+                <span className="flex items-center gap-2">
+                  <Loader2 className="size-4 animate-spin" />
+                  Uploading...
+                </span>
+              ) : (
+                <span className="flex items-center gap-2">
+                  <Upload className="size-4" />
+                  {uploadGroupId ? "Upload Version" : "Upload"}
+                </span>
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* ── Milestone Create/Edit Dialog ──────────────────────────── */}
       <Dialog
@@ -1438,4 +1768,148 @@ function getActivityIcon(type: string): typeof CheckCircle2 {
   if (type.includes("STATUS")) return CircleDot;
   if (type.includes("WORKFLOW")) return Activity;
   return Clock;
+}
+
+// ---------------------------------------------------------------------------
+// Asset Group Card
+// ---------------------------------------------------------------------------
+
+const IMAGE_EXTENSIONS = new Set([".png", ".jpg", ".jpeg", ".gif", ".webp"]);
+
+function isImageFile(fileName: string | null): boolean {
+  if (!fileName) return false;
+  const ext = fileName.toLowerCase().slice(fileName.lastIndexOf("."));
+  return IMAGE_EXTENSIONS.has(ext);
+}
+
+function AssetGroupCard({
+  group,
+  expanded,
+  onToggle,
+  onAddVersion,
+  onDelete,
+  isAdmin,
+}: {
+  group: AssetGroup;
+  expanded: boolean;
+  onToggle: () => void;
+  onAddVersion: () => void;
+  onDelete: (id: string) => void;
+  isAdmin: boolean;
+}) {
+  const latest = group.versions[0];
+  if (!latest) return null;
+  const isImg = isImageFile(latest.fileName);
+
+  return (
+    <Card className="overflow-hidden">
+      {/* Thumbnail / Preview */}
+      <div className="relative aspect-[16/10] bg-muted/50 flex items-center justify-center border-b overflow-hidden">
+        {isImg && latest.fileUrl ? (
+          <img
+            src={latest.fileUrl}
+            alt={latest.title}
+            className="absolute inset-0 w-full h-full object-cover"
+          />
+        ) : (
+          <div className="flex flex-col items-center gap-1">
+            <FileText className="size-10 text-muted-foreground/30" />
+            <span className="text-[10px] text-muted-foreground/50 uppercase font-medium">
+              {latest.fileName?.split(".").pop() ?? "file"}
+            </span>
+          </div>
+        )}
+        <Badge
+          variant="secondary"
+          className="absolute top-2 right-2 text-[10px] h-5 px-1.5 bg-background/80 backdrop-blur-sm"
+        >
+          v{group.latestVersion}
+        </Badge>
+      </div>
+
+      <CardContent className="p-3 space-y-2">
+        {/* Title + meta */}
+        <div>
+          <h4 className="font-semibold text-sm leading-tight truncate">{group.title}</h4>
+          <p className="text-[11px] text-muted-foreground mt-0.5">
+            by {latest.uploadedBy.name} · {formatDistanceToNow(new Date(latest.createdAt), { addSuffix: true })}
+          </p>
+        </div>
+
+        {latest.description && (
+          <p className="text-xs text-muted-foreground/70 line-clamp-2">{latest.description}</p>
+        )}
+
+        {/* Actions */}
+        <div className="flex items-center gap-1.5 pt-1">
+          {latest.fileUrl && (
+            <a href={latest.fileUrl} download={latest.fileName ?? undefined} className="flex-1">
+              <Button variant="outline" size="sm" className="w-full text-xs gap-1">
+                <Download className="size-3" />
+                Download
+              </Button>
+            </a>
+          )}
+          <Button variant="outline" size="sm" className="text-xs gap-1" onClick={onAddVersion}>
+            <Upload className="size-3" />
+            New Version
+          </Button>
+        </div>
+
+        {/* Version History Toggle */}
+        {group.versions.length > 1 && (
+          <div>
+            <button
+              onClick={onToggle}
+              className="flex items-center gap-1 text-[11px] text-muted-foreground hover:text-foreground transition-colors w-full"
+            >
+              {expanded ? <ChevronDown className="size-3" /> : <ChevronRight className="size-3" />}
+              {group.versions.length} version{group.versions.length !== 1 ? "s" : ""}
+            </button>
+
+            {expanded && (
+              <div className="mt-2 space-y-1.5 pl-1">
+                {group.versions.map((v) => (
+                  <div
+                    key={v.id}
+                    className="flex items-center gap-2 text-[11px] rounded-md px-2 py-1.5 bg-muted/30"
+                  >
+                    <Badge
+                      variant={v.version === group.latestVersion ? "default" : "outline"}
+                      className="text-[9px] h-4 px-1 shrink-0"
+                    >
+                      v{v.version}
+                    </Badge>
+                    <span className="truncate flex-1 text-muted-foreground">
+                      {v.uploadedBy.name} · {format(new Date(v.createdAt), "MMM d, yyyy")}
+                    </span>
+                    <div className="flex items-center gap-0.5 shrink-0">
+                      {v.fileUrl && (
+                        <a href={v.fileUrl} download={v.fileName ?? undefined}>
+                          <Button variant="ghost" size="icon-xs" title="Download">
+                            <Download className="size-3" />
+                          </Button>
+                        </a>
+                      )}
+                      {isAdmin && (
+                        <Button
+                          variant="ghost"
+                          size="icon-xs"
+                          onClick={() => onDelete(v.id)}
+                          title="Delete version"
+                          className="text-destructive hover:text-destructive"
+                        >
+                          <Trash2 className="size-3" />
+                        </Button>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  );
 }

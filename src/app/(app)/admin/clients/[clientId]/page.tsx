@@ -170,6 +170,59 @@ export default function ClientDetailPage() {
   const [formContactNotes, setFormContactNotes] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
 
+  // Project dialog state
+  const [projectDialogOpen, setProjectDialogOpen] = useState(false);
+  const [formProjectName, setFormProjectName] = useState("");
+  const [formProjectDesc, setFormProjectDesc] = useState("");
+  const [formProjectStart, setFormProjectStart] = useState("");
+  const [formProjectEnd, setFormProjectEnd] = useState("");
+  const [formProjectStagingUrl, setFormProjectStagingUrl] = useState("");
+  const [formProjectLiveUrl, setFormProjectLiveUrl] = useState("");
+
+  const openCreateProject = useCallback(() => {
+    setFormProjectName("");
+    setFormProjectDesc("");
+    setFormProjectStart("");
+    setFormProjectEnd("");
+    setFormProjectStagingUrl("");
+    setFormProjectLiveUrl("");
+    setProjectDialogOpen(true);
+  }, []);
+
+  const handleProjectSubmit = useCallback(async () => {
+    if (!formProjectName.trim()) {
+      toast.error("Project name is required");
+      return;
+    }
+    setIsSubmitting(true);
+    try {
+      const res = await fetch(`/api/clients/${clientId}/projects`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name: formProjectName.trim(),
+          description: formProjectDesc.trim() || null,
+          startDate: formProjectStart ? new Date(formProjectStart).toISOString() : null,
+          endDate: formProjectEnd ? new Date(formProjectEnd).toISOString() : null,
+          stagingUrl: formProjectStagingUrl.trim() || null,
+          liveUrl: formProjectLiveUrl.trim() || null,
+        }),
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        toast.error(err?.error?.message ?? err?.error ?? "Failed to create project");
+        return;
+      }
+      toast.success("Project created");
+      setProjectDialogOpen(false);
+      refetch();
+    } catch {
+      toast.error("Failed to create project");
+    } finally {
+      setIsSubmitting(false);
+    }
+  }, [clientId, formProjectName, formProjectDesc, formProjectStart, formProjectEnd, formProjectStagingUrl, formProjectLiveUrl, refetch]);
+
   const openCreateContact = useCallback(() => {
     setFormContactName("");
     setFormContactEmail("");
@@ -567,9 +620,15 @@ export default function ClientDetailPage() {
         {/* ── Projects Tab ── */}
         <TabsContent value="projects">
           <div className="mt-4 space-y-4">
-            <p className="text-sm text-muted-foreground">
-              {client.projects?.length ?? 0} active project{(client.projects?.length ?? 0) !== 1 ? "s" : ""}
-            </p>
+            <div className="flex items-center justify-between">
+              <p className="text-sm text-muted-foreground">
+                {client.projects?.length ?? 0} active project{(client.projects?.length ?? 0) !== 1 ? "s" : ""}
+              </p>
+              <Button onClick={openCreateProject} size="sm">
+                <Plus className="size-3.5" data-icon="inline-start" />
+                Add Project
+              </Button>
+            </div>
 
             {(client.projects?.length ?? 0) > 0 ? (
               <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
@@ -612,8 +671,12 @@ export default function ClientDetailPage() {
                     No projects yet
                   </p>
                   <p className="mt-1 text-xs text-muted-foreground/70">
-                    Projects will appear here when they are created for this client
+                    Create a project to start tracking work for this client
                   </p>
+                  <Button className="mt-4" size="sm" onClick={openCreateProject}>
+                    <Plus className="size-3.5" data-icon="inline-start" />
+                    Add Project
+                  </Button>
                 </CardContent>
               </Card>
             )}
@@ -791,6 +854,92 @@ export default function ClientDetailPage() {
               disabled={isSubmitting}
             >
               {isSubmitting ? "Deactivating..." : "Deactivate"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* ── Add Project Dialog ── */}
+      <Dialog open={projectDialogOpen} onOpenChange={setProjectDialogOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Add Project</DialogTitle>
+            <DialogDescription>
+              Create a new project for {client?.name}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="space-y-1.5">
+              <Label htmlFor="proj-name">Project Name *</Label>
+              <Input
+                id="proj-name"
+                placeholder="Website Redesign"
+                value={formProjectName}
+                onChange={(e) => setFormProjectName(e.target.value)}
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="proj-desc">Description</Label>
+              <Textarea
+                id="proj-desc"
+                placeholder="Brief project description..."
+                value={formProjectDesc}
+                onChange={(e) => setFormProjectDesc(e.target.value)}
+                rows={3}
+              />
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1.5">
+                <Label htmlFor="proj-start">Start Date</Label>
+                <Input
+                  id="proj-start"
+                  type="date"
+                  value={formProjectStart}
+                  onChange={(e) => setFormProjectStart(e.target.value)}
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="proj-end">End Date</Label>
+                <Input
+                  id="proj-end"
+                  type="date"
+                  value={formProjectEnd}
+                  onChange={(e) => setFormProjectEnd(e.target.value)}
+                />
+              </div>
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="proj-staging">Staging URL</Label>
+              <Input
+                id="proj-staging"
+                placeholder="https://staging.example.com"
+                value={formProjectStagingUrl}
+                onChange={(e) => setFormProjectStagingUrl(e.target.value)}
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="proj-live">Live URL</Label>
+              <Input
+                id="proj-live"
+                placeholder="https://example.com"
+                value={formProjectLiveUrl}
+                onChange={(e) => setFormProjectLiveUrl(e.target.value)}
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setProjectDialogOpen(false)}>
+              Cancel
+            </Button>
+            <Button onClick={handleProjectSubmit} disabled={isSubmitting}>
+              {isSubmitting ? (
+                <span className="flex items-center gap-2">
+                  <Loader2 className="size-4 animate-spin" />
+                  Creating...
+                </span>
+              ) : (
+                "Create Project"
+              )}
             </Button>
           </DialogFooter>
         </DialogContent>

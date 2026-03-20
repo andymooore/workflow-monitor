@@ -372,6 +372,12 @@ enum DocumentType {
   OTHER
 }
 
+enum AssetCategory {
+  MOCKUP
+  DRAFT
+  ASSET
+}
+
 model Document {
   id           String       @id @default(cuid())
   clientId     String?
@@ -384,6 +390,12 @@ model Document {
   fileUrl      String?
   reference    String?
   uploadedById String
+
+  // Asset versioning
+  version       Int            @default(1)
+  groupId       String?
+  assetCategory AssetCategory?
+
   createdAt    DateTime     @default(now())
   updatedAt    DateTime     @updatedAt
 
@@ -397,6 +409,8 @@ model Document {
   @@index([instanceId])
   @@index([type])
   @@index([uploadedById])
+  @@index([groupId])
+  @@index([projectId, assetCategory])
 }
 
 // ──────────────────────────────────────────────

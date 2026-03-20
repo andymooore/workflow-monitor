@@ -207,6 +207,7 @@ export const updateClientSchema = z.object({
 // ---------------------------------------------------------------------------
 export const projectStatusEnum = z.enum(["PLANNING", "IN_PROGRESS", "ON_HOLD", "COMPLETED", "CANCELLED"]);
 export const projectHealthEnum = z.enum(["ON_TRACK", "AT_RISK", "BLOCKED"]);
+export const assetCategoryEnum = z.enum(["MOCKUP", "DRAFT", "ASSET"]);
 export const milestoneStatusEnum = z.enum(["PENDING", "IN_PROGRESS", "COMPLETED", "MISSED"]);
 
 export const createProjectSchema = z.object({
